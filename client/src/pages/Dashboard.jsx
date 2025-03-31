@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  FaUsers, FaChalkboardTeacher, FaBook, FaCalendarAlt, FaChartLine, FaCog,
+  FaUsers, FaChalkboardTeacher, FaBook, FaCalendarAlt, FaCog,
   FaBars, FaSignOutAlt, FaTable, FaGraduationCap
 } from "react-icons/fa";
 
@@ -40,9 +40,8 @@ const Dashboard = () => {
   
   
   const menuItems = [
-    { id: "overview", icon: <FaChartLine />, label: "Overview", link: "/overview" },
-    { id: "students", icon: <FaUsers />, label: "Students", link: "/students" },
-    { id: "teachers", icon: <FaChalkboardTeacher />, label: "Teachers", link: "/teachers" },
+    { id: "students", icon: <FaUsers />, label: "Students", link: "/dashboard/student" },
+    { id: "teachers", icon: <FaChalkboardTeacher />, label: "Teachers", link: "/dashboard/teacher" },
     { id: "courses", icon: <FaBook />, label: "Courses", link: "/courses" },
     { id: "calendar", icon: <FaCalendarAlt />, label: "Calendar", link: "/calendar" },
     { id: "timetables", icon: <FaTable />, label: "Timetables", link: "/timetable" },

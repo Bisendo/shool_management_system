@@ -19,6 +19,10 @@ import CourseList from "./pages/Courses";
 import AdminDashboard from "./Components/AdminDashboard";
 import TeacherForm from "./pages/TeacherForm";
 import CreateStudentComponent from "./pages/CreateStudents";
+import TeacherIDCardApp from "./pages/Teacher-card";
+import StudentDashboard from "./Components/StudentsDash";
+import TeacherDashboard from "./Components/TeachersDash";
+import TeacherLoginComponent from "./pages/TeacherLogin";
 
 function App() {
   const [authState, setAuthState] = useState({
@@ -36,13 +40,18 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/teachers" element={<TeacherComponent />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/teacher/dashboard" element={<Dashboard />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/attendance" element={<Attendance />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/register" element={<RegisterForm />} />
             <Route path="/login" element={<LoginForm />} />
+            <Route path="/dashboard/attendence" element={<Attendance />} />    
+            <Route path="/dashboard/student" element={<StudentDashboard />} />    
+            <Route path="/dashboard/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/form" element={<TeacherForm/>} />
+            <Route path="/teacher/card" element={<TeacherIDCardApp />} />
+            <Route path="/teacher/Login " element={<TeacherLoginComponent/>} />
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/grades" element={<GradesManagement />} />

@@ -1,9 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
-  const Users = sequelize.define("Users", {
+  const Staffs = sequelize.define("Staffs", {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true,  // Automatically increments the user id
+      autoIncrement: true,
     },
     fullName: {
       type: DataTypes.STRING,
@@ -12,26 +12,27 @@ module.exports = (sequelize, DataTypes) => {
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true, // Ensure email is unique
+      unique: true,
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: false,
-      unique: true, // Ensure phone is unique
+      allowNull: true,
+      unique: false,
     },
     schoolName: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     role: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM('admin', 'teacher'),
       allowNull: false,
     },
+    
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
+    },
   });
 
-  return Users;
+  return Staffs;
 };

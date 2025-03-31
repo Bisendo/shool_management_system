@@ -1,7 +1,7 @@
 const { sign, verify, TokenExpiredError } = require("jsonwebtoken");
 
-// ✅ Hardcoded JWT Secret Key
-const JWT_SECRET_KEY = "jwtsecretplschange"; // ⚠️ Hakikisha umebadilisha hii kwa usalama zaidi
+// ✅ Hardcoded JWT Secret Key (Not Recommended for production)
+const JWT_SECRET_KEY = "jwtsecretplschange"; // ⚠️ It's recommended to use a better way to store the secret key securely
 
 /**
  * ✅ Generate JWT Token
@@ -42,7 +42,7 @@ const ValidateToken = (req, res, next) => {
   const token = authHeader.split(" ")[1]; // Extract token
 
   try {
-    // ✅ Verify token
+    // ✅ Verify token and attach the decoded user to the request object
     req.user = verify(token, JWT_SECRET_KEY);
     next();
   } catch (err) {

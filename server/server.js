@@ -32,11 +32,11 @@ db.sequelize.sync().then(() => {
 });
 
 // Routes
-const registerPost = require('./routes/Users');
-app.use('/users', registerPost);
+const registerPost = require('./routes/Staffs');
+app.use('/staffs', registerPost);
 
-const studentsPost = require('./routes/Students');
-app.use('/students', studentsPost);
+// const studentsPost = require('./routes/Students');
+// app.use('/students', studentsPost);
 
 const teacherRoutes = require('./routes/Teachers');
 app.use('/teachers', teacherRoutes);

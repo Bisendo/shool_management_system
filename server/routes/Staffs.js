@@ -1,6 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { Users } = require("../models");
+const { Staffs } = require("../models");
 const { Op } = require("sequelize");
 const { createToken, ValidateToken } = require("../utils/jwt");
 const router = express.Router();
@@ -21,40 +21,29 @@ const validateRegisterInput = (req, res, next) => {
     return res.status(400).json({ error: "Password must be at least 8 characters" });
   }
 
-  if (!['admin', 'teacher', 'student'].includes(role)) {
+  if (!['admin', 'teacher'].includes(role)) {
     return res.status(400).json({ error: "Invalid role specified" });
   }
 
   next();
 };
 
-// ✅ Register Route
+/// ✅ Register Route
 router.post("/register", validateRegisterInput, async (req, res) => {
   try {
     const { fullName, email, phone, schoolName, role, password } = req.body;
 
-    // Check for existing user
-    const existingUser = await Users.findOne({
-      where: {
-        [Op.or]: [{ email }, { phone }]
-      }
-    });
-
-    if (existingUser) {
-      return res.status(409).json({ 
-        error: "User already exists",
-        conflicts: {
-          email: existingUser.email === email,
-          phone: existingUser.phone === phone
-        }
-      });
+    // Check for existing staff based on email only
+    const existingStaff = await Staffs.findOne({ where: { email } });
+    if (existingStaff) {
+      return res.status(409).json({ error: "Email already exists" });
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
-    const newUser = await Users.create({
+    // Create staff
+    const newStaff = await Staffs.create({
       fullName,
       email,
       phone,
@@ -63,22 +52,17 @@ router.post("/register", validateRegisterInput, async (req, res) => {
       password: hashedPassword,
     });
 
-    // Omit password from response
-    const userResponse = {
-      id: newUser.id,
-      fullName: newUser.fullName,
-      email: newUser.email,
-      phone: newUser.phone,
-      schoolName: newUser.schoolName,
-      role: newUser.role,
-      createdAt: newUser.createdAt
+    const staffResponse = {
+      id: newStaff.id,
+      fullName: newStaff.fullName,
+      email: newStaff.email,
+      phone: newStaff.phone,
+      schoolName: newStaff.schoolName,
+      role: newStaff.role,
+      createdAt: newStaff.createdAt
     };
 
-    return res.status(201).json({ 
-      message: "User registered successfully", 
-      user: userResponse 
-    });
-
+    return res.status(201).json({ message: "Staff registered successfully", staff: staffResponse });
   } catch (error) {
     console.error("Registration error:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -89,90 +73,70 @@ router.post("/register", validateRegisterInput, async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    // Find user
-    const user = await Users.findOne({ 
-      where: { email },
-      attributes: ['id', 'fullName', 'email', 'phone', 'schoolName', 'role', 'password']
-    });
-
-    if (!user) {
+    // Find staff
+    const staff = await Staffs.findOne({ where: { email }, attributes: ['id', 'fullName', 'email', 'phone', 'schoolName', 'role', 'password'] });
+    if (!staff) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, staff.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Generate token
-    const token = createToken(user);
+    const token = createToken(staff);
 
-    // Prepare user data for response (without password)
-    const userData = {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      schoolName: user.schoolName,
-      role: user.role
+    const staffData = {
+      id: staff.id,
+      fullName: staff.fullName,
+      email: staff.email,
+      phone: staff.phone,
+      schoolName: staff.schoolName,
+      role: staff.role
     };
 
-    return res.json({
-      message: "Login successful",
-      token,
-      user: userData
-    });
-
+    return res.json({ message: "Login successful", token, staff: staffData });
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ✅ Get Current User Profile
+// ✅ Get Current Staff Profile
 router.get("/me", ValidateToken, async (req, res) => {
   try {
-    const user = await Users.findByPk(req.user.id, {
-      attributes: ['id', 'fullName', 'email', 'phone', 'schoolName', 'role']
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const staff = await Staffs.findByPk(req.user.id, { attributes: ['id', 'fullName', 'email', 'phone', 'schoolName', 'role'] });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff not found" });
     }
-
-    res.json(user);
+    res.json(staff);
   } catch (error) {
     console.error("Get profile error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ✅ Get Users by School (Teachers/Admins only)
-router.get("/users", ValidateToken, async (req, res) => {
+// ✅ Get Staffs by School (Admins only)
+router.get("/staffs", ValidateToken, async (req, res) => {
   try {
-    // Only allow admins and teachers to access this endpoint
-    if (!['admin', 'teacher'].includes(req.user.role)) {
+    if (req.user.role !== 'admin') {
       return res.status(403).json({ error: "Unauthorized access" });
     }
 
-    const users = await Users.findAll({
-      where: { 
-        schoolName: req.user.schoolName,
-        // Optionally filter by role if query parameter provided
-        ...(req.query.role && { role: req.query.role })
-      },
+    const staffs = await Staffs.findAll({
+      where: { schoolName: req.user.schoolName },
       attributes: ['id', 'fullName', 'email', 'phone', 'role', 'createdAt']
     });
 
-    res.json(users);
+    res.json(staffs);
   } catch (error) {
-    console.error("Get users error:", error);
+    console.error("Get staffs error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
