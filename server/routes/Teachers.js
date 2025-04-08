@@ -136,4 +136,17 @@ router.get("/teachers", ValidateToken, async (req, res) => {
   }
 });
 
+
+// Get a single teacher by ID
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacher = await Teachers.findByPk(id);
+    if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+    res.json(teacher);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

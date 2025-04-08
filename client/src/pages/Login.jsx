@@ -1,4 +1,4 @@
-import React, { useState, useContext,useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { AuthContext } from "../helpers/AuthoContex";
@@ -16,7 +16,7 @@ const LoginForm = () => {
   const [currentSticker, setCurrentSticker] = useState(0);
 
   const stickers = ["📚", "🎓", "🏫", "✏️", "📝", "🧑‍🏫"];
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSticker((prev) => (prev + 1) % stickers.length);
@@ -27,9 +27,11 @@ const LoginForm = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!email) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "Invalid email format";
+    else if (!/\S+@\S+\.\S+/.test(email))
+      newErrors.email = "Invalid email format";
     if (!password) newErrors.password = "Password is required";
-    else if (password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    else if (password.length < 6)
+      newErrors.password = "Password must be at least 6 characters";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -42,8 +44,12 @@ const LoginForm = () => {
     setErrors({});
 
     try {
-      const response = await axios.post("http://localhost:4070/staffs/login", { email, password });
-      if (!response.data.token) throw new Error("Invalid response format: No token found");
+      const response = await axios.post("http://localhost:4070/staffs/login", {
+        email,
+        password,
+      });
+      if (!response.data.token)
+        throw new Error("Invalid response format: No token found");
 
       const token = response.data.token;
       const decoded = jwtDecode(token);
@@ -70,7 +76,10 @@ const LoginForm = () => {
         else setErrors({ general: "Unauthorized role" });
       }, 500);
     } catch (error) {
-      setErrors({ general: error.response?.data?.error || "Login failed. Please try again." });
+      setErrors({
+        general:
+          error.response?.data?.error || "Login failed. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -103,14 +112,14 @@ const LoginForm = () => {
           duration: 10,
           repeat: Infinity,
           ease: "easeInOut",
-          delay: 1
+          delay: 1,
         }}
       >
         📖
       </motion.div>
 
       <Navbar />
-      
+
       <div className="flex-1 flex items-center justify-center p-4">
         <motion.div
           className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden relative"
@@ -120,21 +129,21 @@ const LoginForm = () => {
         >
           {/* Animated sticker header */}
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-center">
-            <motion.div 
+            <motion.div
               className="inline-block mb-2"
-              animate={{ 
+              animate={{
                 scale: [1, 1.1, 1],
-                rotate: [0, 10, -10, 0]
+                rotate: [0, 10, -10, 0],
               }}
-              transition={{ 
+              transition={{
                 duration: 2,
                 repeat: Infinity,
-                repeatDelay: 1
+                repeatDelay: 1,
               }}
             >
               <span className="text-5xl">{stickers[currentSticker]}</span>
             </motion.div>
-            <motion.h2 
+            <motion.h2
               className="text-2xl font-bold text-white"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -167,7 +176,7 @@ const LoginForm = () => {
                     placeholder="your@email.com"
                   />
                   {errors.email && (
-                    <motion.p 
+                    <motion.p
                       className="text-red-500 text-sm mt-1"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -193,7 +202,7 @@ const LoginForm = () => {
                     placeholder="••••••••"
                   />
                   {errors.password && (
-                    <motion.p 
+                    <motion.p
                       className="text-red-500 text-sm mt-1"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -205,7 +214,7 @@ const LoginForm = () => {
 
                 <AnimatePresence>
                   {errors.general && (
-                    <motion.p 
+                    <motion.p
                       className="text-red-500 text-sm text-center"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -224,12 +233,18 @@ const LoginForm = () => {
                   <motion.button
                     type="submit"
                     className={`w-full px-6 py-3 rounded-xl text-white font-medium flex items-center justify-center ${
-                      loading ? "bg-blue-400" : "bg-gradient-to-r from-blue-600 to-indigo-600"
+                      loading
+                        ? "bg-blue-400"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600"
                     }`}
-                    whileHover={!loading ? { 
-                      scale: 1.02, 
-                      boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)" 
-                    } : {}}
+                    whileHover={
+                      !loading
+                        ? {
+                            scale: 1.02,
+                            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                          }
+                        : {}
+                    }
                     whileTap={!loading ? { scale: 0.98 } : {}}
                     onHoverStart={() => setIsHovered(true)}
                     onHoverEnd={() => setIsHovered(false)}
@@ -238,7 +253,11 @@ const LoginForm = () => {
                     {loading ? (
                       <motion.span
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
                         className="inline-block"
                       >
                         🔄
@@ -259,7 +278,7 @@ const LoginForm = () => {
                 </motion.div>
               </form>
 
-              <motion.div 
+              <motion.div
                 className="mt-6 text-center text-sm text-gray-600 flex items-center justify-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -272,12 +291,21 @@ const LoginForm = () => {
                     Sign up
                   </a>
                 </p>
-             <br />
-                <FiUserPlus className="mr-1" />
+              </motion.div>
+
+              <motion.div
+                className="mt-6 text-center text-sm text-gray-600 flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+              >
                 <p>
-                  Login As teacher?{" "}
-                  <a href="/teacher/Login" className="text-blue-600 hover:underline">
-                    Login
+                  Login As Teacher{" "}
+                  <a
+                    href="/login/teacher"
+                    className="text-blue-600 hover:underline font-black"
+                  >
+                    Login{" "}
                   </a>
                 </p>
               </motion.div>
@@ -285,7 +313,7 @@ const LoginForm = () => {
           </div>
 
           {/* Decorative corner stickers */}
-          <motion.div 
+          <motion.div
             className="absolute -bottom-4 -left-4 text-4xl opacity-30"
             animate={{
               rotate: [0, 15, -15, 0],
@@ -293,12 +321,12 @@ const LoginForm = () => {
             transition={{
               duration: 8,
               repeat: Infinity,
-              ease: "easeInOut"
+              ease: "easeInOut",
             }}
           >
             ✏️
           </motion.div>
-          <motion.div 
+          <motion.div
             className="absolute -top-4 -right-4 text-4xl opacity-30"
             animate={{
               rotate: [0, -15, 15, 0],
@@ -307,7 +335,7 @@ const LoginForm = () => {
               duration: 10,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: 1
+              delay: 1,
             }}
           >
             📚

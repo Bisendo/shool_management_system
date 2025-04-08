@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { FiMail, FiPhone, FiArrowRight } from "react-icons/fi";
+import { useNavigate, Link } from "react-router-dom";
+import { FiMail, FiPhone, FiArrowRight, FiHome } from "react-icons/fi";
 
-const TeacherLoginComponent = () => {
+const TeacherLogin = () => {
   const [loginData, setLoginData] = useState({
     email: "",
     phone: "",
@@ -36,7 +36,7 @@ const TeacherLoginComponent = () => {
     const newErrors = {};
     if (!loginData.email.trim() && !loginData.phone.trim()) {
       newErrors.general = "Email or phone number is required";
-      setError(newErrors.general)
+      setError(newErrors.general);
       return false;
     }
 
@@ -97,8 +97,9 @@ const TeacherLoginComponent = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden relative">
+      {/* Floating decorative elements */}
       <motion.div
-        className="absolute top-1/4 left-10 text-6xl opacity-20"
+        className="hidden md:block absolute top-1/4 left-10 text-6xl opacity-20"
         animate={{
           y: [0, -20, 0],
           rotate: [0, 10, -10, 0],
@@ -112,7 +113,7 @@ const TeacherLoginComponent = () => {
         🎒
       </motion.div>
       <motion.div
-        className="absolute bottom-1/3 right-10 text-7xl opacity-20"
+        className="hidden md:block absolute bottom-1/3 right-10 text-7xl opacity-20"
         animate={{
           y: [0, 20, 0],
           rotate: [0, -15, 15, 0],
@@ -127,9 +128,15 @@ const TeacherLoginComponent = () => {
         📖
       </motion.div>
 
-      <nav className="bg-blue-800 p-4 text-white shadow-md">
+      {/* Navbar */}
+      <nav className="bg-white p-4 shadow-md sticky top-0 z-10">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Teacher Login</h1>
+          <div className="flex items-center space-x-4">
+            <Link to="/" className="text-blue-600 hover:text-blue-800 transition-colors">
+              <FiHome className="text-xl" />
+            </Link>
+            <h1 className="text-xl font-semibold text-gray-800">Teacher Login</h1>
+          </div>
           <motion.div
             className="inline-block"
             animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
@@ -140,6 +147,7 @@ const TeacherLoginComponent = () => {
         </div>
       </nav>
 
+      {/* Main content */}
       <div className="flex-1 flex items-center justify-center p-4">
         <motion.div
           className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden relative"
@@ -147,7 +155,7 @@ const TeacherLoginComponent = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="p-8">
+          <div className="p-6 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -245,8 +253,9 @@ const TeacherLoginComponent = () => {
             </motion.div>
           </div>
 
+          {/* Decorative elements */}
           <motion.div
-            className="absolute -bottom-4 -left-4 text-4xl opacity-30"
+            className="hidden md:block absolute -bottom-4 -left-4 text-4xl opacity-30"
             animate={{
               rotate: [0, 15, -15, 0],
             }}
@@ -259,7 +268,7 @@ const TeacherLoginComponent = () => {
             ✏️
           </motion.div>
           <motion.div
-            className="absolute -top-4 -right-4 text-4xl opacity-30"
+            className="hidden md:block absolute -top-4 -right-4 text-4xl opacity-30"
             animate={{
               rotate: [0, -15, 15, 0],
             }}
@@ -278,4 +287,4 @@ const TeacherLoginComponent = () => {
   );
 };
 
-export default TeacherLoginComponent;
+export default TeacherLogin;

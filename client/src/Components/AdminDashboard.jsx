@@ -124,7 +124,7 @@ const AdminDashboard = () => {
       const token = localStorage.getItem("accessToken");
 
       const [teachersResponse, studentsResponse] = await Promise.all([
-        axios.get("http://localhost:4070/teachers", {
+        axios.get("http://localhost:4070/teachers/teachers", {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get("http://localhost:4070/students", {

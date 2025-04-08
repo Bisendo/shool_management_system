@@ -10,9 +10,7 @@ import {
   FiLogOut,
   FiBell,
   FiSearch,
-  FiBookOpen,
   FiClipboard,
-  FiBarChart2,
   FiHome,
   FiCheckCircle,
   FiAlertCircle,
@@ -20,11 +18,16 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiUsers,
+  FiUserPlus,
+  FiEdit2,
+  FiTrash2,
+  FiX,
+  FiUpload,
 } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import axios from "axios";
-
 const TeacherDashboard = () => {
+  // State variables
   const [activeTab, setActiveTab] = useState("dashboard");
   const [teacher, setTeacher] = useState({ name: "", school: "" });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -34,9 +37,23 @@ const TeacherDashboard = () => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   const [error, setError] = useState(null);
   const [students, setStudents] = useState([]);
-  const [showAddClassForm, setShowAddClassForm] = useState(false);
-  const [newClassName, setNewClassName] = useState("");
+  const [showStudentForm, setShowStudentForm] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [passportPreview, setPassportPreview] = useState(null);
+  const [file, setFile] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  const [formData, setFormData] = useState({
+    fullName: "",
+    grade: "",
+    rollNumber: "",
+    phone: "",
+    parentName: "",
+    parentContact: "",
+    passport: null,
+  });
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -46,45 +63,45 @@ const TeacherDashboard = () => {
 
   const navigate = useNavigate();
 
+  // Fetch students with pagination
   const fetchStudents = useCallback(async () => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("accessToken");
-      const schoolName = localStorage.getItem("schoolName");
-      
-      if (!schoolName) {
-        throw new Error("School information not found");
-      }
-  
       const response = await axios.get("http://localhost:4070/students", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
         params: {
-          school: schoolName,
           search: searchTerm,
           page: pagination.page,
           limit: pagination.limit,
         },
       });
-  
-      console.log("Fetched students data:", response.data); // Add this line
-      
+
+      console.log(response.data);
+
       setStudents(response.data.students || []);
       setPagination({
-        page: response.data.currentPage,
+        page: response.data.currentPage || 1,
         limit: pagination.limit,
-        total: response.data.totalStudents,
-        totalPages: response.data.totalPages,
+        total: response.data.totalStudents || 0,
+        totalPages: response.data.totalPages || 1,
       });
     } catch (error) {
-      console.error("Error fetching students:", error);
-      setError("Failed to fetch students. Please try again.");
+      setError(
+        error.response?.data?.message ||
+          "Failed to fetch students. Please try again."
+      );
       if (error.response?.status === 401) {
         navigate("/login");
       }
+    } finally {
+      setIsLoading(false);
     }
   }, [navigate, searchTerm, pagination.page, pagination.limit]);
 
+  // Effect hook to initialize the teacher data and fetch students on component mount
   useEffect(() => {
     const storedName = localStorage.getItem("teacherName");
     const schoolName = localStorage.getItem("schoolName");
@@ -101,7 +118,6 @@ const TeacherDashboard = () => {
       navigate("/login");
     }
 
-    // Load initial data
     fetchStudents();
 
     // Simulate loading notifications
@@ -142,15 +158,22 @@ const TeacherDashboard = () => {
     return () => clearTimeout(timer);
   }, [navigate, fetchStudents]);
 
+  // Handlers for file selection, search, and notifications
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPassportPreview(reader.result);
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     fetchStudents();
-  };
-
-  const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }));
-    }
   };
 
   const markAsRead = (id) => {
@@ -169,43 +192,125 @@ const TeacherDashboard = () => {
     setExpandedMenu((prev) => (prev === menuId ? null : menuId));
   };
 
-  const stats = [
-    {
-      title: "Active Classes",
-      icon: <FiBookOpen className="h-6 w-6" />,
-      value: "4",
-      change: "+1",
-      trend: "up",
-    },
-    {
-      title: "Total Students",
-      value: pagination.total.toString(),
-      icon: <FiUsers className="h-6 w-6" />,
-      change: `+${Math.max(0, pagination.total - 3)}`,
-      trend: "up",
-    },
-    {
-      title: "Avg. Class Performance",
-      value: "82%",
-      icon: <FiBarChart2 className="h-6 w-6" />,
-      change: "+2%",
-      trend: "up",
-    },
-    {
-      title: "Unread Messages",
-      value: notifications.filter((n) => !n.read).length.toString(),
-      icon: <FiMessageSquare className="h-6 w-6" />,
-      change: "+2",
-      trend: "up",
-    },
-  ];
+  // Handlers for student management (edit, delete, form submission)
+  const startEditingStudent = (student) => {
+    setEditingStudent(student);
+    setFormData({
+      fullName: student.fullName,
+      grade: student.grade,
+      rollNumber: student.rollNumber,
+      phone: student.phone,
+      parentName: student.parentName,
+      parentContact: student.parentContact,
+      passport: student.passport,
+    });
+    if (student.picture) {
+      setPassportPreview(`http://localhost:4070${student.picture}`);
+    } else if (student.passport) {
+      setPassportPreview(student.passport);
+    }
+    setShowStudentForm(true);
+  };
+
+  const handleDeleteStudent = async (studentId) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      await axios.delete(`http://localhost:4070/students/${studentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      fetchStudents();
+      setSuccessMessage("Student deleted successfully");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to delete student. Please try again."
+      );
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitStudent = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("accessToken");
+      const schoolName = localStorage.getItem("schoolName");
+      const teacherId = localStorage.getItem("teacherId");
+
+      if (!teacherId) {
+        throw new Error(
+          "Teacher ID is missing. Ensure it's set in localStorage."
+        );
+      }
+
+      const formDataToSend = new FormData();
+      formDataToSend.append("fullName", formData.fullName);
+      formDataToSend.append("grade", formData.grade);
+      formDataToSend.append("rollNumber", formData.rollNumber);
+      formDataToSend.append("phone", formData.phone);
+      formDataToSend.append("parentName", formData.parentName);
+      formDataToSend.append("parentContact", formData.parentContact);
+      formDataToSend.append("school", schoolName);
+      formDataToSend.append("teacherId", teacherId);
+
+      if (file) {
+        formDataToSend.append("passport", file);
+      }
+
+      const url = editingStudent
+        ? `http://localhost:4070/students/${editingStudent.id}`
+        : "http://localhost:4070/students";
+
+      const method = editingStudent ? "put" : "post";
+
+      const response = await axios[method](url, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setSuccessMessage(
+        `Student ${editingStudent ? "updated" : "added"} successfully: ${
+          response.data.fullName
+        }`
+      );
+      setTimeout(() => setSuccessMessage(null), 5000);
+
+      setShowStudentForm(false);
+      setEditingStudent(null);
+      setFormData({
+        fullName: "",
+        grade: "",
+        rollNumber: "",
+        phone: "",
+        parentName: "",
+        parentContact: "",
+        passport: null,
+      });
+      setPassportPreview(null);
+      setFile(null);
+      fetchStudents();
+    } catch (error) {
+      setError(
+        error.response?.data?.error ||
+          "Failed to save student. Please try again."
+      );
+    }
+  };
 
   const navItems = [
     {
       id: "dashboard",
       icon: <FiHome className="h-5 w-5" />,
       label: "Dashboard",
-      path: "/dashboard",
+      path: "/teacher/dashboard",
     },
     {
       id: "classes",
@@ -268,7 +373,9 @@ const TeacherDashboard = () => {
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"
             />
-            <p className="text-gray-600 text-lg mt-4">Loading dashboard data...</p>
+            <p className="text-gray-600 text-lg mt-4">
+              Loading dashboard data...
+            </p>
           </div>
         </div>
       </div>
@@ -283,7 +390,9 @@ const TeacherDashboard = () => {
         animate={{ x: 0 }}
         transition={{ type: "spring", stiffness: 100 }}
         className={`fixed md:relative z-40 flex flex-col w-64 bg-white border-r border-gray-200 h-full transition-all duration-300 ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
@@ -324,7 +433,9 @@ const TeacherDashboard = () => {
               <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">{teacher.name}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {teacher.name}
+              </p>
               <p className="text-xs text-gray-500">{teacher.school}</p>
             </div>
           </div>
@@ -455,7 +566,10 @@ const TeacherDashboard = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <form onSubmit={handleSearch} className="relative hidden md:block">
+              <form
+                onSubmit={handleSearch}
+                className="relative hidden md:block"
+              >
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
@@ -528,6 +642,33 @@ const TeacherDashboard = () => {
           </div>
         )}
 
+        {/* Success message */}
+        {successMessage && (
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mx-4 mt-4 rounded">
+            <div className="flex justify-between items-center">
+              <p>{successMessage}</p>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="text-green-700 hover:text-green-900"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main content area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50">
           {/* Welcome Banner */}
@@ -542,103 +683,63 @@ const TeacherDashboard = () => {
             </h2>
             <p className="opacity-90">
               {teacher.school} | You have{" "}
-              {notifications.filter((n) => !n.read).length} new notifications and{" "}
-              {pagination.total} students in your school
+              {notifications.filter((n) => !n.read).length} new notifications
+              and {pagination.total || 0} students in your school
             </p>
           </motion.div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">
-                      {stat.title}
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                      {stat.value}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-                    {stat.icon}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      stat.trend === "up"
-                        ? "bg-green-100 text-green-800"
-                        : stat.trend === "down"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {stat.change}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
           {/* Students Section */}
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white p-6 rounded-xl shadow-lg"
+          >
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Students Management</h2>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => fetchStudents()}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                >
-                  Refresh
-                </button>
-                <button
-                  onClick={() => setShowAddClassForm(!showAddClassForm)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  Add Class
-                </button>
-              </div>
+              <h2 className="text-xl font-bold text-gray-800">Students</h2>
+              <button
+                onClick={() => {
+                  setShowStudentForm(true);
+                  setEditingStudent(null);
+                  setFormData({
+                    fullName: "",
+                    grade: "",
+                    rollNumber: "",
+                    phone: "",
+                    parentName: "",
+                    parentContact: "",
+                    passport: null,
+                  });
+                  setPassportPreview(null);
+                }}
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                <FiUserPlus className="mr-2" /> Add Student
+              </button>
             </div>
 
-            {showAddClassForm && (
-              <div className="mb-6 bg-white p-4 rounded-lg shadow">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={newClassName}
-                    onChange={(e) => setNewClassName(e.target.value)}
-                    placeholder="Enter class name"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <button
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                  >
-                    Create
-                  </button>
-                  <button
-                    onClick={() => setShowAddClassForm(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+            {students.length === 0 ? (
+              <div className="text-center py-8">
+                <FiUsers className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No students found
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add your first student to get started
+                </p>
+                <button
+                  onClick={() => setShowStudentForm(true)}
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  Add Student
+                </button>
               </div>
-            )}
-
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
+                        Student
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Grade
@@ -650,148 +751,279 @@ const TeacherDashboard = () => {
                         Contact
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Parent Info
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {students.length > 0 ? (
-                      students.map((student) => (
-                        <tr key={student.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img
-                                  className="h-10 w-10 rounded-full"
-                                  src={student.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.fullName)}&background=random`}
-                                  alt={student.fullName}
-                                />
+                    {students.map((student) => (
+                      <motion.tr
+                        key={student.id}
+                        whileHover={{
+                          backgroundColor: "rgba(249, 250, 251, 1)",
+                        }}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={
+                                  student.picture
+                                    ? `http://localhost:4070${student.picture}`
+                                    : student.passport ||
+                                      "https://randomuser.me/api/portraits/lego/1.jpg"
+                                }
+                                alt={student.fullName}
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {student.fullName}
                               </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {student.fullName}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {student.parentName || "No parent info"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {student.grade || "N/A"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {student.rollNumber || "N/A"}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {student.phone || "N/A"}
-                            </div>
-                            {student.parentContact && (
                               <div className="text-xs text-gray-500">
-                                Parent: {student.parentContact}
+                                ID: {student.id}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-indigo-600 hover:text-indigo-900 mr-3">
-                              View
-                            </button>
-                            <button className="text-gray-600 hover:text-gray-900">
-                              Message
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="5"
-                          className="px-6 py-4 text-center text-sm text-gray-500"
-                        >
-                          No students found in {teacher.school}
+                            </div>
+                          </div>
                         </td>
-                      </tr>
-                    )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {student.grade}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {student.rollNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {student.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {student.parentName && (
+                            <div>
+                              <div>{student.parentName}</div>
+                              <div className="text-xs text-gray-400">
+                                {student.parentContact}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => startEditingStudent(student)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          >
+                            <FiEdit2 className="inline mr-1" /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStudent(student.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <FiTrash2 className="inline mr-1" /> Delete
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+            )}
+          </motion.div>
 
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                  <div className="flex-1 flex justify-between sm:hidden">
+          {/* Student Form Modal */}
+          <AnimatePresence>
+            {showStudentForm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                onClick={() => {
+                  setShowStudentForm(false);
+                  setEditingStudent(null);
+                  setPassportPreview(null);
+                }}
+              >
+                <motion.div
+                  initial={{ y: -50 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: -50 }}
+                  className="bg-white rounded-lg p-6 w-full max-w-md"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">
+                      {editingStudent ? "Edit Student" : "Add New Student"}
+                    </h3>
                     <button
-                      onClick={() => handlePageChange(pagination.page - 1)}
-                      disabled={pagination.page === 1}
-                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                      onClick={() => {
+                        setShowStudentForm(false);
+                        setEditingStudent(null);
+                        setPassportPreview(null);
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
                     >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(pagination.page + 1)}
-                      disabled={pagination.page === pagination.totalPages}
-                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                    >
-                      Next
+                      <FiX className="h-6 w-6" />
                     </button>
                   </div>
-                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
-                        <span className="font-medium">
-                          {Math.min(pagination.page * pagination.limit, pagination.total)}
-                        </span>{" "}
-                        of <span className="font-medium">{pagination.total}</span> results
-                      </p>
+                  <form onSubmit={handleSubmitStudent} className="w-full">
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Passport Photo
+                      </label>
+                      <div className="flex items-center justify-center w-full">
+                        {passportPreview ? (
+                          <div className="relative">
+                            <img
+                              src={passportPreview}
+                              alt="Passport Preview"
+                              className="h-24 w-24 sm:h-32 sm:w-32 rounded-full object-cover border-2 border-gray-300"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPassportPreview(null);
+                                setFile(null);
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <FiX className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6 px-2 text-center">
+                              <FiUpload className="h-6 w-6 sm:h-8 sm:w-8 text-gray-500 mb-2" />
+                              <p className="text-xs sm:text-sm text-gray-500">
+                                <span className="font-semibold">
+                                  Click to upload
+                                </span>{" "}
+                                passport photo
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                PNG, JPG, JPEG (MAX. 5MB)
+                              </p>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleFileChange}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <button
-                          onClick={() => handlePageChange(pagination.page - 1)}
-                          disabled={pagination.page === 1}
-                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                        >
-                          <span className="sr-only">Previous</span>
-                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              pageNum === pagination.page
-                                ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => handlePageChange(pagination.page + 1)}
-                          disabled={pagination.page === pagination.totalPages}
-                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                        >
-                          <span className="sr-only">Next</span>
-                          <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </nav>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          name="fullName"
+                          value={formData.fullName}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Grade
+                        </label>
+                        <input
+                          list="gradeOptions"
+                          name="grade"
+                          value={formData.grade}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                        <datalist id="gradeOptions">
+                          {[1, 2, 3, 4, 5, 6, 7].map((grade) => (
+                            <option key={grade} value={`Grade ${grade}`} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Roll Number
+                        </label>
+                        <input
+                          type="text"
+                          name="rollNumber"
+                          value={formData.rollNumber}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone
+                        </label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Parent Name
+                        </label>
+                        <input
+                          type="text"
+                          name="parentName"
+                          value={formData.parentName}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Parent Contact
+                        </label>
+                        <input
+                          type="tel"
+                          name="parentContact"
+                          value={formData.parentContact}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+
+                    <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStudentForm(false);
+                          setEditingStudent(null);
+                          setPassportPreview(null);
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                      >
+                        {editingStudent ? "Update" : "Add"} Student
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
 

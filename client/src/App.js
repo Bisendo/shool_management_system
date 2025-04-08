@@ -17,12 +17,11 @@ import { AuthContext } from "./helpers/AuthoContex";
 import Calendar from "./pages/Calender";
 import CourseList from "./pages/Courses";
 import AdminDashboard from "./Components/AdminDashboard";
-import TeacherForm from "./pages/TeacherForm";
 import CreateStudentComponent from "./pages/CreateStudents";
 import TeacherIDCardApp from "./pages/Teacher-card";
 import StudentDashboard from "./Components/StudentsDash";
 import TeacherDashboard from "./Components/TeachersDash";
-import TeacherLoginComponent from "./pages/TeacherLogin";
+import TeacherLogin from "./pages/TeacherLogin";
 
 function App() {
   const [authState, setAuthState] = useState({
@@ -49,9 +48,8 @@ function App() {
             <Route path="/dashboard/attendence" element={<Attendance />} />    
             <Route path="/dashboard/student" element={<StudentDashboard />} />    
             <Route path="/dashboard/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/form" element={<TeacherForm/>} />
             <Route path="/teacher/card" element={<TeacherIDCardApp />} />
-            <Route path="/teacher/Login " element={<TeacherLoginComponent/>} />
+            <Route path="/login/teacher" element={<TeacherLogin/>} />
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/grades" element={<GradesManagement />} />
