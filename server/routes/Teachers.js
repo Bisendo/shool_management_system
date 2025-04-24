@@ -1,11 +1,10 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { Teachers } = require("../models");
-const { createToken, ValidateToken } = require("../utils/jwt"); // Import token utilities
-const { Op } = require("sequelize");
+const { createToken,ValidateToken } = require("../utils/jwt");
 const router = express.Router();
 
-// Input validation middleware for teacher registration
+// Input validation middleware
 const validateRegisterInput = (req, res, next) => {
   const { fullName, email, phone, subject, password, confirmPassword } = req.body;
 
@@ -24,48 +23,46 @@ const validateRegisterInput = (req, res, next) => {
   next();
 };
 
-// Generate a teacher number if not provided
+// Generate teacher number
 const generateTeacherNumber = () => {
-    const prefix = 'T'; // You can adjust this
-    const randomNumber = Math.floor(1000 + Math.random() * 9000); // Random 4-digit number
-    return prefix + randomNumber;
-  };
-  
-  // Registration Route
-  router.post("/register", validateRegisterInput, async (req, res) => {
-    try {
-      const { fullName, email, phone, subject, password, teacherNumber } = req.body;
-  
-      // Check if teacherNumber is provided, if not, generate one
-      const generatedTeacherNumber = teacherNumber || generateTeacherNumber();
-  
-      // Check for existing teacher based on email
-      const existingTeacher = await Teachers.findOne({ where: { email } });
-      if (existingTeacher) {
-        return res.status(409).json({ error: "Email already exists" });
-      }
-  
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 12);
-  
-      // Create new teacher
-      const newTeacher = await Teachers.create({
-        fullName,
-        email,
-        phone,
-        subject,
-        teacherNumber: generatedTeacherNumber, // Use generated or provided teacher number
-        password: hashedPassword,
-      });
-  
-      return res.status(201).json({ message: "Teacher registered successfully", teacher: newTeacher });
-    } catch (error) {
-      console.error("Registration error:", error);
-      return res.status(500).json({ error: "Internal server error" });
+  const prefix = 'T';
+  const randomNumber = Math.floor(1000 + Math.random() * 9000);
+  return prefix + randomNumber;
+};
+
+// ✅ Register Teacher
+router.post("/register", ValidateToken, validateRegisterInput, async (req, res) => {
+  try {
+    const { fullName, email, phone, subject, password, teacherNumber } = req.body;
+    const adminId = req.user.id; // Assuming only admin can register
+
+    const generatedTeacherNumber = teacherNumber || generateTeacherNumber();
+
+    const existingTeacher = await Teachers.findOne({ where: { email } });
+    if (existingTeacher) {
+      return res.status(409).json({ error: "Email already exists" });
     }
-  });
-  
-// ✅ Login Teacher Route
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const newTeacher = await Teachers.create({
+      fullName,
+      email,
+      phone,
+      subject,
+      teacherNumber: generatedTeacherNumber,
+      password: hashedPassword,
+      adminId
+    });
+
+    res.status(201).json({ message: "Teacher registered successfully", teacher: newTeacher });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ✅ Login Teacher
 router.post("/login", async (req, res) => {
   try {
     const { email, phone } = req.body;
@@ -73,7 +70,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Email or phone number is required" });
     }
 
-    // Find the teacher by email or phone
     const teacher = await Teachers.findOne({
       where: email ? { email } : { phone },
       attributes: ["id", "fullName", "email", "phone", "subject"],
@@ -83,7 +79,6 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate a JWT token for the teacher
     const token = createToken(teacher);
 
     const teacherData = {
@@ -94,15 +89,14 @@ router.post("/login", async (req, res) => {
       subject: teacher.subject,
     };
 
-    return res.json({ message: "Login successful", token, teacher: teacherData });
+    res.json({ message: "Login successful", token, teacher: teacherData });
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-
-// ✅ Get Current Teacher Profile
+// ✅ Get Current Teacher
 router.get("/me", ValidateToken, async (req, res) => {
   try {
     const teacher = await Teachers.findByPk(req.user.id, {
@@ -118,27 +112,28 @@ router.get("/me", ValidateToken, async (req, res) => {
   }
 });
 
-// ✅ Get All Teachers (Admins only)
-router.get("/teachers", ValidateToken, async (req, res) => {
+// ✅ Get All Teachers 
+router.get('/teachers', async (req, res) => {
+
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Unauthorized access" });
+    const teachers = await Teachers.findAll();
+
+    if (teachers.length === 0) {
+      return res.status(404).json({ message: 'No teachers found for this admin.' });
     }
 
-    const teachers = await Teachers.findAll({
-      attributes: ["id", "fullName", "email", "phone", "subject", "createdAt"],
-    });
-
-    res.json(teachers);
+    res.status(200).json(teachers);
   } catch (error) {
-    console.error("Get teachers error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error fetching teachers:', error);
+    res.status(500).json({ message: 'Server error.' });
   }
 });
 
 
-// Get a single teacher by ID
-router.get("/:id", async (req, res) => {
+
+
+// ✅ Get Single Teacher by ID
+router.get("/:id", ValidateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const teacher = await Teachers.findByPk(id);

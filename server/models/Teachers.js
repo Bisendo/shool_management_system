@@ -38,6 +38,16 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "teacherId",
       as: "Students", // Ensure this alias matches
     });
+
+    
+  };
+
+
+  Teachers.associate = (models) => {
+    Teachers.belongsTo(models.Staffs, {
+      foreignKey: "adminId",
+      as: "teachersUnderAdmin"
+    });
   };
 
   return Teachers;

@@ -2,10 +2,21 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  FaHome, FaUserGraduate, FaChalkboardTeacher, FaClipboardList,
-  FaChartLine, FaCog, FaBars, FaTimes, FaPlus, FaSearch,
-  FaIdCard, FaUserTie, FaPhone, FaEnvelope, FaBook, FaLock,
-  FaSpinner, FaPaperPlane, FaComments, FaBell
+  FaHome,
+  FaChalkboardTeacher,
+  FaClipboardList,
+  FaBars,
+  FaTimes,
+  FaPlus,
+  FaSearch,
+  FaSpinner,
+  FaPaperPlane,
+  FaComments,
+  FaBook,
+  FaUserTie,
+  FaLock,
+  FaEnvelope,
+  FaPhone,
 } from "react-icons/fa";
 
 const TeacherDashboard = () => {
@@ -22,7 +33,7 @@ const TeacherDashboard = () => {
     unreadCount: 0,
     sidebarOpen: false,
     notifications: [],
-    showNotifications: false
+    showNotifications: false,
   });
 
   const [formData, setFormData] = useState({
@@ -31,21 +42,21 @@ const TeacherDashboard = () => {
     phone: "",
     subject: "",
     password: "default123",
-    confirmPassword: "default123"
+    confirmPassword: "default123",
   });
 
   const [messageData, setMessageData] = useState({
     recipientId: "",
     subject: "",
-    content: ""
+    content: "",
   });
 
   const [formErrors, setFormErrors] = useState({});
   const [messageErrors, setMessageErrors] = useState({});
   const [currentTeacher, setCurrentTeacher] = useState({
     name: localStorage.getItem("teacherName") || "Teacher",
-    id: localStorage.getItem("teacherId") || "TCH-001",
-    school: localStorage.getItem("schoolName") || "School"
+    id: localStorage.getItem("teacherId") || "",
+    school: localStorage.getItem("schoolName") || "School",
   });
 
   const sidebarRef = useRef(null);
@@ -54,108 +65,80 @@ const TeacherDashboard = () => {
   // Fetch teachers data
   const fetchTeachers = async () => {
     try {
-      const response = await axios.get("http://localhost:4070/teachers");
-      setState(prev => ({
+      const token = localStorage.getItem("accessToken");
+      const adminId = localStorage.getItem("teacherId"); // Assuming the logged-in user is admin
+      
+      const response = await axios.get(`http://localhost:4070/teachers/admin/${adminId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      setState((prev) => ({
         ...prev,
         teachers: response.data || [],
         loading: false,
-        error: null
+        error: null,
       }));
     } catch (error) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
-        error: error.response?.data?.error || "Failed to fetch teachers"
+        error: error.response?.data?.error || "Failed to fetch teachers",
       }));
     }
   };
 
   // Fetch current teacher data
   const fetchCurrentTeacherData = async () => {
-    const teacherId = localStorage.getItem("teacherId");
-    if (!teacherId) {
-      navigate("/login");
-      return;
-    }
-
     try {
-      const response = await axios.get(
-        `http://localhost:4070/teachers/${teacherId}`
-      );
+      const token = localStorage.getItem("accessToken");
+      const teacherId = localStorage.getItem("teacherId");
+      
+      const response = await axios.get(`http://localhost:4070/teachers/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
       if (response.data) {
         setCurrentTeacher({
           name: response.data.fullName || "Teacher",
-          id: response.data.id || teacherId,
-          school: response.data.school || "School"
+          id: response.data.id || "",
+          school: "School" // You might want to fetch this from another endpoint
         });
         localStorage.setItem("teacherName", response.data.fullName || "");
-        localStorage.setItem("schoolName", response.data.school || "");
+        localStorage.setItem("teacherId", response.data.id || "");
       }
     } catch (err) {
       console.error("Error fetching teacher data:", err);
+      // Fallback to localStorage data if API fails
       setCurrentTeacher({
         name: localStorage.getItem("teacherName") || "Teacher",
-        id: localStorage.getItem("teacherId") || "TCH-001",
-        school: localStorage.getItem("schoolName") || "School"
+        id: localStorage.getItem("teacherId") || "",
+        school: localStorage.getItem("schoolName") || "School",
       });
-    }
-  };
-
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      const response = await axios.get("http://localhost:4070/notifications");
-      setState(prev => ({
-        ...prev,
-        notifications: response.data || [
-          {
-            id: 1,
-            message: "New staff meeting scheduled",
-            time: "15 min ago",
-            read: false,
-          },
-          {
-            id: 2,
-            message: "School calendar updated",
-            time: "35 min ago",
-            read: false,
-          }
-        ]
-      }));
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-      setState(prev => ({
-        ...prev,
-        notifications: [
-          {
-            id: 1,
-            message: "New staff meeting scheduled",
-            time: "15 min ago",
-            read: false,
-          },
-          {
-            id: 2,
-            message: "School calendar updated",
-            time: "35 min ago",
-            read: false,
-          }
-        ]
-      }));
     }
   };
 
   // Load user data, teachers, and notifications
   useEffect(() => {
-    fetchCurrentTeacherData();
-    fetchTeachers();
-    fetchNotifications();
+    const loadData = async () => {
+      await fetchCurrentTeacherData();
+      await fetchTeachers();
+    };
+    loadData();
   }, []);
 
   // Close sidebar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (state.sidebarOpen && sidebarRef.current && !sidebarRef.current.contains(event.target)) {
-        setState(prev => ({ ...prev, sidebarOpen: false }));
+      if (
+        state.sidebarOpen &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target)
+      ) {
+        setState((prev) => ({ ...prev, sidebarOpen: false }));
       }
     };
 
@@ -168,19 +151,19 @@ const TeacherDashboard = () => {
     const errors = {};
     if (!formData.fullName.trim()) errors.fullName = "Full name is required";
     if (!formData.subject.trim()) errors.subject = "Subject is required";
-    
+
     if (!formData.email.trim()) {
       errors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errors.email = "Email is invalid";
     }
-    
+
     if (!formData.phone.trim()) {
       errors.phone = "Phone number is required";
     } else if (!/^[0-9]{10,15}$/.test(formData.phone)) {
       errors.phone = "Phone number is invalid";
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = "Passwords do not match";
     }
@@ -194,8 +177,9 @@ const TeacherDashboard = () => {
     const errors = {};
     if (!messageData.recipientId) errors.recipientId = "Recipient is required";
     if (!messageData.subject.trim()) errors.subject = "Subject is required";
-    if (!messageData.content.trim()) errors.content = "Message content is required";
-    
+    if (!messageData.content.trim())
+      errors.content = "Message content is required";
+
     setMessageErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -206,15 +190,21 @@ const TeacherDashboard = () => {
     if (!validateForm()) return;
 
     try {
+      const token = localStorage.getItem("accessToken");
       const response = await axios.post(
         "http://localhost:4070/teachers/register",
-        formData
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         teachers: [...prev.teachers, response.data.teacher],
-        showAddForm: false
+        showAddForm: false,
       }));
 
       setFormData({
@@ -223,12 +213,12 @@ const TeacherDashboard = () => {
         phone: "",
         subject: "",
         password: "default123",
-        confirmPassword: "default123"
+        confirmPassword: "default123",
       });
     } catch (error) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: error.response?.data?.error || "Failed to add teacher"
+        error: error.response?.data?.error || "Failed to add teacher",
       }));
     }
   };
@@ -238,99 +228,72 @@ const TeacherDashboard = () => {
     if (!validateMessage()) return;
 
     try {
+      const token = localStorage.getItem("accessToken");
       await axios.post(
         "http://localhost:4070/messages",
         {
+          senderId: currentTeacher.id,
           recipientId: messageData.recipientId,
           subject: messageData.subject,
-          content: messageData.content
+          content: messageData.content,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         showMessageForm: false,
-        error: null
+        error: null,
       }));
 
       setMessageData({
         recipientId: "",
         subject: "",
-        content: ""
+        content: "",
       });
     } catch (error) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: error.response?.data?.error || "Failed to send message"
+        error: error.response?.data?.error || "Failed to send message",
       }));
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
     if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: null }));
+      setFormErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
   const handleMessageInputChange = (e) => {
     const { name, value } = e.target;
-    setMessageData(prev => ({ ...prev, [name]: value }));
-    
+    setMessageData((prev) => ({ ...prev, [name]: value }));
+
     if (messageErrors[name]) {
-      setMessageErrors(prev => ({ ...prev, [name]: null }));
+      setMessageErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
   const toggleSidebar = () => {
-    setState(prev => ({ ...prev, sidebarOpen: !prev.sidebarOpen }));
-  };
-
-  const toggleNotifications = () => {
-    setState(prev => ({ ...prev, showNotifications: !prev.showNotifications }));
-  };
-
-  const markAsRead = async (id) => {
-    try {
-      await axios.patch(`http://localhost:4070/notifications/${id}`, {
-        read: true,
-      });
-      setState(prev => ({
-        ...prev,
-        notifications: prev.notifications.map(n => 
-          n.id === id ? { ...n, read: true } : n
-        )
-      }));
-    } catch (err) {
-      console.error("Error marking notification as read:", err);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await axios.patch("http://localhost:4070/notifications/mark-all", {
-        read: true,
-      });
-      setState(prev => ({
-        ...prev,
-        notifications: prev.notifications.map(n => ({ ...n, read: true }))
-      }));
-    } catch (err) {
-      console.error("Error marking all notifications as read:", err);
-    }
+    setState((prev) => ({ ...prev, sidebarOpen: !prev.sidebarOpen }));
   };
 
   const openMessageForm = (teacher) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       showMessageForm: true,
-      selectedTeacher: teacher
+      selectedTeacher: teacher,
     }));
-    setMessageData(prev => ({
+    setMessageData((prev) => ({
       ...prev,
-      recipientId: teacher.id
+      recipientId: teacher.id,
     }));
   };
 
@@ -342,10 +305,11 @@ const TeacherDashboard = () => {
     navigate("/login");
   };
 
-  const filteredTeachers = state.teachers.filter(teacher =>
-    teacher.fullName.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-    teacher.email.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
-    teacher.subject.toLowerCase().includes(state.searchTerm.toLowerCase())
+  const filteredTeachers = state.teachers.filter(
+    (teacher) =>
+      teacher.fullName?.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
+      teacher.subject?.toLowerCase().includes(state.searchTerm.toLowerCase())
   );
 
   const stats = [
@@ -418,7 +382,7 @@ const TeacherDashboard = () => {
         <nav className="px-4">
           <button
             onClick={() => {
-              setState(prev => ({ ...prev, sidebarOpen: false }));
+              setState((prev) => ({ ...prev, sidebarOpen: false }));
               navigate("/teacher/dashboard");
             }}
             className={`flex items-center w-full p-4 mb-1 rounded-lg cursor-pointer transition-all ${
@@ -433,7 +397,7 @@ const TeacherDashboard = () => {
 
           <button
             onClick={() => {
-              setState(prev => ({ ...prev, sidebarOpen: false }));
+              setState((prev) => ({ ...prev, sidebarOpen: false }));
               navigate("/teacher/teachers");
             }}
             className={`flex items-center w-full p-4 mb-1 rounded-lg cursor-pointer transition-all ${
@@ -467,27 +431,19 @@ const TeacherDashboard = () => {
           >
             {state.sidebarOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
           </button>
-          
-          <h1 className="text-xl font-semibold text-gray-800">{currentTeacher.school}</h1>
-          
+
+          <h1 className="text-xl font-semibold text-gray-800">
+            {currentTeacher.school}
+          </h1>
+
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={toggleNotifications}
-              className="relative text-gray-700 hover:text-blue-600"
-              aria-label="Notifications"
-            >
-              <FaBell size={20} />
-              {state.notifications.filter(n => !n.read).length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                  {state.notifications.filter(n => !n.read).length}
-                </span>
-              )}
-            </button>
-            
             <span className="text-gray-800 mr-2 hidden sm:inline">
-              Teacher: <span className="font-semibold text-blue-600">{currentTeacher.name}</span>
+              Teacher:{" "}
+              <span className="font-semibold text-blue-600">
+                {currentTeacher.name}
+              </span>
             </span>
-            
+
             <img
               src="https://randomuser.me/api/portraits/women/44.jpg"
               alt="Profile"
@@ -505,8 +461,8 @@ const TeacherDashboard = () => {
             </h2>
             <p className="opacity-90">
               {currentTeacher.school} | You have{" "}
-              {state.notifications.filter(n => !n.read).length} new notifications and{" "}
-              {state.teachers.length} teachers in your school
+              {state.notifications.filter((n) => !n.read).length} new
+              notifications and {state.teachers.length} teachers in your school
             </p>
           </div>
 
@@ -534,12 +490,15 @@ const TeacherDashboard = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Teachers</h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Teachers
+                </h2>
                 <p className="text-sm text-gray-600">
-                  Total Teachers: <span className="font-bold">{state.teachers.length}</span>
+                  Total Teachers:{" "}
+                  <span className="font-bold">{state.teachers.length}</span>
                 </p>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                 <div className="relative w-full">
                   <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -548,12 +507,19 @@ const TeacherDashboard = () => {
                     placeholder="Search teachers..."
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={state.searchTerm}
-                    onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        searchTerm: e.target.value,
+                      }))
+                    }
                   />
                 </div>
-                
+
                 <button
-                  onClick={() => setState(prev => ({ ...prev, showAddForm: true }))}
+                  onClick={() =>
+                    setState((prev) => ({ ...prev, showAddForm: true }))
+                  }
                   className="px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition duration-300 whitespace-nowrap flex items-center justify-center"
                 >
                   <FaPlus className="inline-block mr-2" /> Add Teacher
@@ -590,10 +556,10 @@ const TeacherDashboard = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredTeachers.length > 0 ? (
-                      filteredTeachers.map(teacher => (
+                      filteredTeachers.map((teacher) => (
                         <tr key={teacher.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {teacher.id}
+                            {teacher.teacherNumber || teacher.id}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
                             {teacher.fullName}
@@ -619,7 +585,10 @@ const TeacherDashboard = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td
+                          colSpan={6}
+                          className="px-6 py-4 text-center text-sm text-gray-500"
+                        >
                           No teachers found
                         </td>
                       </tr>
@@ -650,8 +619,10 @@ const TeacherDashboard = () => {
           <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2">
               <h2 className="text-xl font-semibold">Register New Teacher</h2>
-              <button 
-                onClick={() => setState(prev => ({ ...prev, showAddForm: false }))}
+              <button
+                onClick={() =>
+                  setState((prev) => ({ ...prev, showAddForm: false }))
+                }
                 className="text-gray-500 hover:text-gray-700"
               >
                 <FaTimes />
@@ -670,13 +641,15 @@ const TeacherDashboard = () => {
                     value={formData.fullName}
                     onChange={handleInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      formErrors.fullName ? 'border-red-500' : 'border-gray-300'
+                      formErrors.fullName ? "border-red-500" : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="John Doe"
                   />
                 </div>
                 {formErrors.fullName && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.fullName}
+                  </p>
                 )}
               </div>
 
@@ -692,13 +665,15 @@ const TeacherDashboard = () => {
                     value={formData.subject}
                     onChange={handleInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      formErrors.subject ? 'border-red-500' : 'border-gray-300'
+                      formErrors.subject ? "border-red-500" : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Mathematics"
                   />
                 </div>
                 {formErrors.subject && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.subject}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.subject}
+                  </p>
                 )}
               </div>
 
@@ -714,13 +689,15 @@ const TeacherDashboard = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      formErrors.email ? 'border-red-500' : 'border-gray-300'
+                      formErrors.email ? "border-red-500" : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="teacher@school.edu"
                   />
                 </div>
                 {formErrors.email && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.email}
+                  </p>
                 )}
               </div>
 
@@ -736,13 +713,15 @@ const TeacherDashboard = () => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                      formErrors.phone ? "border-red-500" : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="0712345678"
                   />
                 </div>
                 {formErrors.phone && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.phone}
+                  </p>
                 )}
               </div>
 
@@ -775,26 +754,33 @@ const TeacherDashboard = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      formErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                      formErrors.confirmPassword
+                        ? "border-red-500"
+                        : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     readOnly
                   />
                 </div>
                 {formErrors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {formErrors.confirmPassword}
+                  </p>
                 )}
               </div>
-              
+
               <div className="mb-4 p-3 bg-yellow-50 rounded-md">
                 <p className="text-sm text-yellow-700">
-                  <strong>Note:</strong> The teacher will use their email and default password ("default123") to login for the first time.
+                  <strong>Note:</strong> The teacher will use their email and
+                  default password ("default123") to login for the first time.
                 </p>
               </div>
-              
+
               <div className="flex justify-end gap-2 pt-4 sticky bottom-0 bg-white py-2">
                 <button
                   type="button"
-                  onClick={() => setState(prev => ({ ...prev, showAddForm: false }))}
+                  onClick={() =>
+                    setState((prev) => ({ ...prev, showAddForm: false }))
+                  }
                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-300"
                 >
                   Cancel
@@ -817,8 +803,10 @@ const TeacherDashboard = () => {
           <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2">
               <h2 className="text-xl font-semibold">Send Message</h2>
-              <button 
-                onClick={() => setState(prev => ({ ...prev, showMessageForm: false }))}
+              <button
+                onClick={() =>
+                  setState((prev) => ({ ...prev, showMessageForm: false }))
+                }
                 className="text-gray-500 hover:text-gray-700"
               >
                 <FaTimes />
@@ -831,8 +819,12 @@ const TeacherDashboard = () => {
                 </label>
                 {state.selectedTeacher ? (
                   <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <p className="font-medium">{state.selectedTeacher.fullName}</p>
-                    <p className="text-sm text-gray-600">{state.selectedTeacher.subject} Teacher</p>
+                    <p className="font-medium">
+                      {state.selectedTeacher.fullName}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {state.selectedTeacher.subject} Teacher
+                    </p>
                   </div>
                 ) : (
                   <select
@@ -840,12 +832,14 @@ const TeacherDashboard = () => {
                     value={messageData.recipientId}
                     onChange={handleMessageInputChange}
                     className={`mt-1 p-2 w-full border ${
-                      messageErrors.recipientId ? 'border-red-500' : 'border-gray-300'
+                      messageErrors.recipientId
+                        ? "border-red-500"
+                        : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     required
                   >
                     <option value="">Select a teacher</option>
-                    {state.teachers.map(t => (
+                    {state.teachers.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.fullName} ({t.subject})
                       </option>
@@ -853,10 +847,12 @@ const TeacherDashboard = () => {
                   </select>
                 )}
                 {messageErrors.recipientId && (
-                  <p className="mt-1 text-sm text-red-600">{messageErrors.recipientId}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {messageErrors.recipientId}
+                  </p>
                 )}
               </div>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subject <span className="text-red-500">*</span>
@@ -869,16 +865,20 @@ const TeacherDashboard = () => {
                     value={messageData.subject}
                     onChange={handleMessageInputChange}
                     className={`mt-1 pl-10 p-2 w-full border ${
-                      messageErrors.subject ? 'border-red-500' : 'border-gray-300'
+                      messageErrors.subject
+                        ? "border-red-500"
+                        : "border-gray-300"
                     } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                     placeholder="Regarding..."
                   />
                 </div>
                 {messageErrors.subject && (
-                  <p className="mt-1 text-sm text-red-600">{messageErrors.subject}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {messageErrors.subject}
+                  </p>
                 )}
               </div>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Message <span className="text-red-500">*</span>
@@ -889,20 +889,24 @@ const TeacherDashboard = () => {
                   onChange={handleMessageInputChange}
                   rows="5"
                   className={`mt-1 p-2 w-full border ${
-                    messageErrors.content ? 'border-red-500' : 'border-gray-300'
+                    messageErrors.content ? "border-red-500" : "border-gray-300"
                   } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   placeholder="Write your message here..."
                   required
                 />
                 {messageErrors.content && (
-                  <p className="mt-1 text-sm text-red-600">{messageErrors.content}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {messageErrors.content}
+                  </p>
                 )}
               </div>
-              
+
               <div className="flex justify-end gap-2 pt-4 sticky bottom-0 bg-white py-2">
                 <button
                   type="button"
-                  onClick={() => setState(prev => ({ ...prev, showMessageForm: false }))}
+                  onClick={() =>
+                    setState((prev) => ({ ...prev, showMessageForm: false }))
+                  }
                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-300"
                 >
                   Cancel
@@ -915,76 +919,6 @@ const TeacherDashboard = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Notifications Panel */}
-      {state.showNotifications && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-lg z-50">
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Notifications</h2>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={markAllAsRead}
-                  className="text-sm text-indigo-600 hover:text-indigo-800"
-                >
-                  Mark all as read
-                </button>
-                <button
-                  onClick={toggleNotifications}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <FaTimes className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-              {state.notifications.length > 0 ? (
-                <ul className="divide-y divide-gray-200">
-                  {state.notifications.map((notification) => (
-                    <li
-                      key={notification.id}
-                      className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        !notification.read ? "bg-blue-50" : ""
-                      }`}
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <div className="flex items-start">
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm font-medium ${
-                              !notification.read
-                                ? "text-gray-900"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            {notification.message}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            {notification.time}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <div className="flex-shrink-0 ml-3">
-                            <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="p-8 text-center">
-                  <FaBell className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    No notifications
-                  </h3>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}

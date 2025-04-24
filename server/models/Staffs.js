@@ -34,5 +34,13 @@ module.exports = (sequelize, DataTypes) => {
     },
   });
 
+
+  Staffs.associate = (models) => {
+    Staffs.hasMany(models.Teachers, {
+      foreignKey: "adminId",
+      as: "admin", // Ensure this alias matches
+    });
+  };
+
   return Staffs;
 };

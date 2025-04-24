@@ -2,7 +2,7 @@
   "development": {
     "username": "Bisendo",
     "password": "BISEndo100$",
-    "database": "school_management_system",
+    "database": "school_management",
     "host": "127.0.0.1",                                                                                        
     "dialect": "mysql"
   },
